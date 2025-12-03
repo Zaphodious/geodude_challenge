@@ -1,10 +1,10 @@
+
 use rayon::prelude::*;
 use fastrand;
 
 const TURNS: usize = 231;
-//const OPS_PER_BYTE: usize = 4;
 const OPS_PER_BYTE: usize = 4;
-const NOBYTES: usize = TURNS/OPS_PER_BYTE;
+const NOBYTES: usize = ((TURNS as f32)/(OPS_PER_BYTE as f32)).ceil() as usize;
 
 pub fn with_multithreading(rounds: usize, bar_incrementer: impl Fn(usize) + Send + Sync) -> Option<usize> {
     cpu_byte_rolling(rounds,bar_incrementer)
