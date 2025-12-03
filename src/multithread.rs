@@ -3,7 +3,7 @@ use fastrand;
 
 const TURNS: usize = 231;
 //const OPS_PER_BYTE: usize = 4;
-const OPS_PER_BYTE: usize = 7;
+const OPS_PER_BYTE: usize = 4;
 const NOBYTES: usize = TURNS/OPS_PER_BYTE;
 
 pub fn with_multithreading(rounds: usize, bar_incrementer: impl Fn(usize) + Send + Sync) -> Option<usize> {
