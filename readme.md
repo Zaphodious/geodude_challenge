@@ -1,6 +1,6 @@
 # Geodude Softlock Paralysis Simulator
 
-This repo is my answer to the challenge from (Austin's Graveler Soft Lock video)[https://www.youtube.com/watch?v=M8C8dHQE2Ro]. It was released last year. I'm a bit late to the party. But, it nerd sniped me hard, so here it is.
+This repo is my answer to the challenge from [Austin's Graveler Soft Lock video](https://www.youtube.com/watch?v=M8C8dHQE2Ro). It was released last year. I'm a bit late to the party. But, it nerd sniped me hard, so here it is.
 
 ## How to run
 
