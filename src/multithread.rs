@@ -22,7 +22,11 @@ fn cpu_byte_rolling(rounds: usize, bar_incrementer: impl Fn(usize) + Send + Sync
         fastrand::fill(&mut roundvec);
         (i, roundvec)
     // and then find out how many results are represented
-    }).map(|(i, roundvec)| {
+    }).map(|(i, mut roundvec)| {
+
+        // 231/4 remainer is 3, so we adjust the first byte so that
+        // we only get three dice rolls out of it.
+        roundvec[0] = roundvec[0] & 0b00111111;
 
         // Do the counting here
         let rollcount: usize = roundvec.iter().map(bitmask_d4).sum();
