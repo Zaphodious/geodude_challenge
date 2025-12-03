@@ -1,76 +1,70 @@
-use std::{iter::repeat_with, sync::atomic::{AtomicUsize, Ordering}, time::Instant};
-use rayon::prelude::*;
-use fastrand;
+use std::{time::Instant};
+use indicatif::{ProgressBar, ProgressStyle};
+use clap::Parser;
+use colored::Colorize;
 
-mod compute;
+mod gpucompute;
+mod multithread;
 
-const TURNS: usize = 231;
-//const OPS_PER_BYTE: usize = 4;
-const OPS_PER_BYTE: usize = 7;
-const NOBYTES: usize = (TURNS/OPS_PER_BYTE);
-const TARGET: usize = 177;
+const TARGET_PROCS: usize = 177;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+
+    /// Use GPU compute to perform the simulations, rather
+    /// then multithreading. 
+    #[arg(short, long, default_value_t = false)]
+    gpu: bool,
+
+    /// The number of simulations to run. 
+    #[arg(short, long, default_value_t = 1_000_000_000)]
+    simulations: usize,
+}
+
 
 fn main() {
     let now = Instant::now();
-    let rounds = 1000000000;
-    //let mastervec: Vec<u128> = repeat_with(|| fastrand::u128(..)).take((1000000000 / 64) * turns).collect();
-    //let masterlength = mastervec.len();
-    //println!("{masterlength}");
-    let progress = AtomicUsize::new(0);
-    //let maybe_result = cpu_byte_rolling(rounds, progress);
-    let maybe_result = parallel_gen_u32(rounds, progress);
-    let reslen = maybe_result.len();
-    let elapsed = now.elapsed();
-    /*
-    if let Some(result) = maybe_result {
-        println!("The maximum turns that paralysis proc'd during the battle was {result}. The simulation took {:.2?}", elapsed);
+    let args = Args::parse();
+
+    let algostring = if args.gpu {"the GPU".green()} else {"the CPU".blue()} ;
+
+    println!("\nRunning {} using {algostring}", "battle simulations".yellow() );
+
+    let bar = ProgressBar::new(args.simulations as u64);
+    bar.set_style(ProgressStyle::with_template("Simulation {human_pos}/{human_len} \n{per_sec} simulations per second (eta: {eta}) \n[{wide_bar:.yellow/red}]\n").unwrap().progress_chars("━►░"));
+
+    let incfn = |amt: usize| {
+        bar.inc(amt as u64);
+    };
+
+    
+    let result = if args.gpu {
+        gpucompute::run_on_gpu(args.simulations, incfn).ok()
     } else {
-        println!("Somehow, Mewtwo returned. And then everything went weird.");
-    }
-    */
-    println!("length is {reslen}, took {:.2?}", elapsed);
-}
+        multithread::with_multithreading(args.simulations, incfn)
+    };
 
-fn just_generate_u32s(rounds: usize, progress: AtomicUsize) -> Option<u32> {
-    let mut u: u32 = 0;
-    for i in (0..rounds) {
-        u = fastrand::u32(0..u32::MAX);
-    }
-    Some(u)
-}
+    bar.finish();
 
-fn parallel_gen_u32(rounds: usize, progress: AtomicUsize) -> Vec<u128> {
-    (1..rounds).into_par_iter().map(|i| {
-                fastrand::u128(0..u128::MAX)
-            }).collect()
-}
-
-fn cpu_byte_rolling(rounds: usize, progress: AtomicUsize) -> Option<usize> {
-    (1..rounds+1).into_par_iter().map(|i| {
-        let mut roundvec: [u8; NOBYTES] = [0u8; NOBYTES];
-        fastrand::fill(&mut roundvec);
-        if i % 10000000 == 0 {
-            let current_progress = progress.fetch_add(1, Ordering::Relaxed) + 1;
-            println!("{current_progress}%");
+    if let Some(successes) = result {
+        let elapsed = now.elapsed();
+        let softlock_picked = successes >= TARGET_PROCS;
+        let formatted_successes = if softlock_picked {
+            successes.to_string().green()
+        } else {
+            successes.to_string().red()
+        };
+        let formatted_time = format!("{:.2?} seconds", elapsed).purple();
+        println!("\n\nIn the simulations, the most that paralysis proc'd was {formatted_successes} times.");
+        if softlock_picked {
+            println!("Graveler {} in at least one simulation!", "won".green());
+        } else {
+            println!("Graveler, unfortunately, {} in every simulation", "exploded".red());
         }
-        roundvec
-    }).map(|roundvec| {
+        println!("These simulations took {formatted_time} to complete\n");
+    } else {
+        println!("Somehow, Mewtwo returned.")
+    }
 
-        //roundvec[0] = roundvec[0] & 0b00111111;
-
-        // next to do- scan byte array for 11 bit pairs, return count
-        let rollcount: usize = roundvec.iter().map(|b| {
-            let abits = (b & 0b11000000 == 0b11000000) as usize;
-            let bbits = (b & 0b01100000 == 0b01100000) as usize;
-            let cbits = (b & 0b00110000 == 0b00110000) as usize;
-            let dbits = (b & 0b00011000 == 0b00011000) as usize;
-            let ebits = (b & 0b00001100 == 0b00001100) as usize;
-            let fbits = (b & 0b00000110 == 0b00000110) as usize;
-            let gbits = (b & 0b00000011 == 0b00000011) as usize;
-            abits + bbits + cbits+ dbits + ebits + fbits + gbits
-            //abits + cbits + ebits + gbits
-        }).sum();
-        rollcount
-    }).max()
 }
-
