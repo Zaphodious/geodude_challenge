@@ -5,6 +5,10 @@ use pollster;
 use rayon::prelude::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
+// Programmer's note- I learned GPU compute for this project, and this code is mostly
+// taken from the below-linked tutorial and adapted to accomplish the job. This
+// could absoultely be improved. https://sotrh.github.io/learn-wgpu/compute/introduction/
+
 pub fn run_on_gpu(gen_quant: usize, bar_incrementer: impl Fn(usize) + Send + Sync) -> Result<usize> {
     let res = pollster::block_on(do_computation(gen_quant, bar_incrementer))?;
     Ok(res)
